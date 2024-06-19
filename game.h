@@ -13,6 +13,8 @@
 
 // Game Logic
 #define num_Patterns 5
+#define maxDifficulty 20
+#define minDifficulty 1
 
 // LED ARRAY
 #define num_LEDS 4

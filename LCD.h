@@ -22,7 +22,9 @@ void setup_LCD();
 
 void show_splash();
 
-void show_menu(int difficulty);
+void show_menu(int screen, int difficulty);
+
+void show_start(int screen);
 
 void drawCentreString(const char *buf, int x, int y, float size=1.0);
 

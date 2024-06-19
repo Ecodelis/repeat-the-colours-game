@@ -34,23 +34,17 @@ void show_splash() {
 
   drawCentreString("SAYS", 64, 20, 3);
 
-  drawCentreString("Game Made By: Marcus Fu", 64, 55);
+  drawCentreString("Made By: Marcus Fu", 64, 55);
   
   display.display();
 }
 
-void show_menu(int difficulty) {
+void show_menu(int screen, int difficulty) {
   display.clearDisplay();
   display.setTextColor(WHITE);
 
   drawCentreString("SIMON", 64, 8, 1);
   drawCentreString("SAYS", 64, 17, 1);
-
-  drawCentreString("Difficulty", 64, 40, 1);
-  drawEquilateralTriangle(48, 58, 5, 270, true);
-  drawEquilateralTriangle(80, 58, 5, 90, true);
-  drawCentreString(std::to_string(difficulty).c_str(), 64, 55, 1);
-
 
   // Line Code
   int width = 20;
@@ -60,6 +54,31 @@ void show_menu(int difficulty) {
   display.drawLine(64+width, 15-height, 64+width, 15+height, WHITE);
   display.drawLine(64-width, 2, 64+width, 2, WHITE);
 
+  if (screen == 0) {
+    drawCentreString("Difficulty", 64, 40, 1);
+    drawEquilateralTriangle(48, 58, 5, 270, true);
+    drawEquilateralTriangle(80, 58, 5, 90, true);
+    drawCentreString(std::to_string(difficulty).c_str(), 64, 55, 1);
+  } 
+  else if (screen == 1) {
+    drawCentreString("Are you ready?", 64, 40, 1);
+  }
+
+
+  display.display();
+}
+
+void show_start(int screen) {
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  
+  int x = 64;
+  int y = 25;
+  int size = 3.5;
+  if (screen == 0) drawCentreString("3", x, y, size);
+  if (screen == 1) drawCentreString("2", x, y, size);
+  if (screen == 2) drawCentreString("1", x, y, size);
+  if (screen == 3) drawCentreString("START!", x, y, size);
 
   display.display();
 }
@@ -106,9 +125,6 @@ void drawEquilateralTriangle(int x, int y, int length, float angle, bool filled)
   else
     display.drawTriangle(x1r, y1r, x2r, y2r, x3r, y3r, WHITE);
 }
-
-
-
 
 void animateText(const char *buf, int startX, int startY, int endX, int endY, float startSize, float endSize, int steps) {
     for (int i = 0; i <= steps; i++) {
