@@ -37,8 +37,8 @@
 enum State {
   MENU,
   START,
-  PLAYING,
   WATCHING,
+  REPEAT,
   GAMEOVER,
   VICTORY
 };

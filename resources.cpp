@@ -10,12 +10,12 @@ bool is_Pushed(long &previousTime, const long &timeInterval, const uint8_t &COLO
 
     if (COLOUR_FLAG != 0x00)
     {
-      Serial.println("A PB IS ALREADY PRESSED!");
+      //Serial.println("A PB IS ALREADY PRESSED!");
       return true;
     }
     else
     {
-      Serial.println("PB PRESSED!");
+      //Serial.println("PB PRESSED!");
       return false;
     }
   }
@@ -23,3 +23,12 @@ bool is_Pushed(long &previousTime, const long &timeInterval, const uint8_t &COLO
   return true; // True as in, not ready to accept inputs.
 }
 
+bool time_delay(long& previousTime, long timeInterval) {
+  if (millis() - previousTime > timeInterval) {
+    previousTime = millis();
+    return true;
+  }
+  else {
+    return false;
+  }
+}

@@ -73,13 +73,33 @@ void show_start(int screen) {
   display.setTextColor(WHITE);
   
   int x = 64;
-  int y = 25;
+  int y = 20;
   int size = 3.5;
   if (screen == 0) drawCentreString("3", x, y, size);
-  if (screen == 1) drawCentreString("2", x, y, size);
-  if (screen == 2) drawCentreString("1", x, y, size);
-  if (screen == 3) drawCentreString("START!", x, y, size);
+  else if (screen == 1) drawCentreString("2", x, y, size);
+  else if (screen == 2) drawCentreString("1", x, y, size);
+  else if (screen == 3) drawCentreString("BEGIN", x, y, size);
 
+  display.display();
+}
+
+void show_watch(int screen) {
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+
+  int y = 32;
+  int Ytriangle = y - 7;
+  int Ytriangle_up = y - 12;
+
+  drawCentreString("WATCH", 64, y, 2);
+
+  if (screen == 0) {
+    display.drawTriangle(50, Ytriangle, 64, Ytriangle-8, 78, Ytriangle, WHITE);
+  }
+  else if (screen == 1) {
+    display.fillTriangle(50, Ytriangle, 64, Ytriangle-8, 78, Ytriangle, WHITE);
+  }
+  
   display.display();
 }
 

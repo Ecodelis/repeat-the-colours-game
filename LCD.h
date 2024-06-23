@@ -26,6 +26,8 @@ void show_menu(int screen, int difficulty);
 
 void show_start(int screen);
 
+void show_watch(int screen);
+
 void drawCentreString(const char *buf, int x, int y, float size=1.0);
 
 void drawText(const char *buf, int x, int y, float size=1.0);
