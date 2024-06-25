@@ -1,12 +1,12 @@
 #include "protothreads.h"
 
-#include "ESP12E_DEFINES.h"
 #include "game.h"
 #include "resources.h" // Functions
 #include "LCD.h" // LCD Screen
 
-// LEFT is D5, RIGHT IS D3
-// Buttons for G R B Y -> RX, D8, D7, D6
+// For an easier way of changing button pins
+#define PB1 D3 // Left
+#define PB2 D4 // Right
 
 // Blinking LED
 int ledState = LOW;
@@ -17,19 +17,19 @@ long previousTime = 0;
 long drawInterval = 200; // in milliseconds
 long previousDraw = 0;
 
-
-
-// Debouncing
+// Debouncing and PB Controls
 long debounce_timeInterval = debounce_Time; //200
 long debounce_previousTime = 0;
+volatile uint8_t FLAGS = 0x00; // 4-bit variable [0000_0000]. Used to keep track which button is pressed.
+volatile long PB1PressTime = 0;
+volatile long PB2PressTime = doublePress_Threshold + 1; // So it doesn't detect simutaneous button pressing at the begining of boot
+
 
 // Game Variables
 int confirmation = 0;
 int gameState = State::MENU; // Statemachine
 int difficulty = 5;
 
-
-uint8_t FLAGS = 0x00; // 4-bit variable [0000_0000]. Used to keep track which button is pressed. 0000=Option_0000=Colours
 uint8_t* dynamicPatterns = nullptr; // declare a soon-to-be dynamic pointer
 
 
@@ -45,7 +45,7 @@ int blinking_LED(struct pt* ptBlink) {
 
         // Toggle LED state
         ledState = (ledState == LOW) ? HIGH : LOW;
-        digitalWrite(LED_BUILTIN, ledState);
+        digitalWrite(BUILTIN_LED, ledState);
     }
 
     PT_END(ptBlink);
@@ -138,46 +138,24 @@ int draw(struct pt* ptDraw) {
     PT_END(ptDraw);
 }
 
-void IRAM_ATTR LEFTCLICK_ISR() {
-    if (is_Pushed(debounce_previousTime, debounce_timeInterval, FLAGS) == false) {
-    FLAGS |= 0x20; // Set Left Flag 0010
-    Serial.println("Left ISR");
-  }
-}
-
-void IRAM_ATTR RIGHTCLICK_ISR() {
-    if (is_Pushed(debounce_previousTime, debounce_timeInterval, FLAGS) == false) {
-    FLAGS |= 0x10; // Set Right Flag 0001
-    Serial.println("Right ISR");
-  }
-}
-
-void IRAM_ATTR GREENLED_ISR() {
+// LEFT
+void IRAM_ATTR LEFT_ISR() {
   if (is_Pushed(debounce_previousTime, debounce_timeInterval, FLAGS) == false) {
     FLAGS |= 0x01; // Set G flag B0
-    Serial.println("GREEN ISR");
+    Serial.println("LEFT ISR");
   }
+
+  PB1PressTime = millis();
 }
 
-void IRAM_ATTR REDLED_ISR() {
+// RIGHT
+void IRAM_ATTR RIGHT_ISR() {
   if (is_Pushed(debounce_previousTime, debounce_timeInterval, FLAGS) == false) {
-    FLAGS |= 0x02; // Set R flag B1
-    Serial.println("RED ISR");
+    FLAGS |= 0x02; // Set Y flag B3
+    Serial.println("RIGHT ISR");
   }
-}
 
-void IRAM_ATTR BLUELED_ISR() {
-  if (is_Pushed(debounce_previousTime, debounce_timeInterval, FLAGS) == false) {
-    FLAGS |= 0x04; // Set B flag B2
-    Serial.println("BLUE ISR");
-  }
-}
-
-void IRAM_ATTR YELLOWLED_ISR() {
-  if (is_Pushed(debounce_previousTime, debounce_timeInterval, FLAGS) == false) {
-    FLAGS |= 0x08; // Set Y flag B3
-    Serial.println("YELLOW ISR");
-  }
+  PB2PressTime = millis();
 }
 
 
@@ -185,17 +163,10 @@ void setup() {
 
   // initialize inbuilt LED pin as an output.
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(D3, INPUT_PULLUP); // RIGHT
-  pinMode(D5, INPUT_PULLUP); // LEFT
-  pinMode(RX, INPUT_PULLUP); // GREEN
-  pinMode(D8, INPUT_PULLUP); // RED
-  pinMode(D7, INPUT_PULLUP); // BLUE
-  pinMode(D6, INPUT_PULLUP); // YELLOW
+  pinMode(PB1, INPUT_PULLUP); // PB, Left
+  pinMode(PB2, INPUT_PULLUP); // PB, Right
 
-  //pinMode(SD0, OUTPUT); // GREEN
-  //pinMode(SD1, OUTPUT); // RED
-  //pinMode(SD2, OUTPUT); // BLUE
-  //pinMode(SD3, OUTPUT); // YELLOW
+
   
 
 
@@ -213,19 +184,15 @@ void setup() {
   delay(3000);
   show_menu(0, difficulty);
   
-  attachInterrupt(digitalPinToInterrupt(D5), LEFTCLICK_ISR, FALLING);
-  attachInterrupt(digitalPinToInterrupt(D3), RIGHTCLICK_ISR, FALLING);
-  attachInterrupt(digitalPinToInterrupt(RX), GREENLED_ISR, FALLING);
-  attachInterrupt(digitalPinToInterrupt(D8), REDLED_ISR, FALLING);
-  attachInterrupt(digitalPinToInterrupt(D7), BLUELED_ISR, FALLING);
-  attachInterrupt(digitalPinToInterrupt(D6), YELLOWLED_ISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PB1), LEFT_ISR, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PB2), RIGHT_ISR, FALLING);
 }
 
 void loop() {
   blinking_LED(&ptBlink);
   draw(&ptDraw);
 
-  // Change gameState at the end of any scene (LCD animations)
+  // Change gameState at the end of any scene (LCD animations) (theres a better way of doing this)
   if (GPS_1 == true) {
     GPS_1 = false;
     gameState = State::WATCHING;
@@ -238,6 +205,16 @@ void loop() {
     GPC_2 = 0;
     GPT1Interval = 1000;
     Serial.println("DIFF STATE!");
+  }
+
+  // Check if the two buttons were pressed within a certain interval of each other
+  if(abs(PB1PressTime - PB2PressTime) < doublePress_Threshold) {
+    Serial.println("SIMU PB!");
+    FLAGS = 0x04;
+
+    // Reset time to prevent continuous execution
+    PB1PressTime = 0;
+    PB2PressTime = doublePress_Threshold + 1;
   }
 
   switch(gameState) {
@@ -261,32 +238,32 @@ void menu() {
 
   if (confirmation == 0) {
     // RIGHT
-    if (FLAGS == 0x10) { difficulty++;}  
+    if (FLAGS == 0x02) { difficulty++;}  
     // LEFT
-    else if (FLAGS == 0x20) { difficulty--; }
-    else if (FLAGS != 0x00) { confirmation = 1; } // If player hit any other button
+    else if (FLAGS == 0x01) { difficulty--; }
+    else if (FLAGS == 0x04) { confirmation = 1; } // If player hit any other button
 
     // Min and Max Control
     if (difficulty <= minDifficulty) {difficulty = minDifficulty; }
     else if (difficulty >= maxDifficulty) {difficulty = maxDifficulty; }
   }
   else if (confirmation == 1) {
-    if (FLAGS == 0x20 | FLAGS == 0x10) { confirmation = 0; }
-    else if (FLAGS != 0x00) {gameState = State::START; } // If player hit any other button
+    if (FLAGS != 0x04) { confirmation = 0; }
+    else if (FLAGS == 0x04) {gameState = State::START; } // If player hit any other button
     
   }
 
-  FLAGS = 0x00; // Reset Pressed Buttons
+  resetPB();
 }
 
 // Initializes and Resets all game elements
 void start() {
-  FLAGS = 0x00; // Reset Pressed Buttons
+  resetPB();
   generatePattern();
 }
 
 void watch() {
-  GPT2Interval = 1000; // change this to a function that speeds up per light
+  GPT2Interval = 1000; // change this to a function that speeds up per light later in dev
 
   if (time_delay(previousGPT2, GPT2Interval)) { // Every so seconds, begin a cycle of showing the LED order
     previousGPT2 = millis();
@@ -320,4 +297,8 @@ void generatePattern()
 
     Serial.println(dynamicPatterns[i]);
   }
+}
+
+void resetPB() { // Resets All PB Flags
+  FLAGS = 0x00; // Reset Pressed Buttons
 }

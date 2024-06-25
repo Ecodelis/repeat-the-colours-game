@@ -1,4 +1,5 @@
 // LCD.h
+#include "ESP12E_DEFINES.h"
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>

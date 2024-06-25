@@ -10,6 +10,7 @@
 // Time
 #define debounce_Time 200
 #define watch_Time 1500
+#define doublePress_Threshold 200
 
 // Game Logic
 #define num_Patterns 5

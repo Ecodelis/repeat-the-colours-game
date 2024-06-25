@@ -2,7 +2,7 @@
 #include "resources.h"
 
 // tests to see if a pb has already been pushed (ISR dupe flag prevention)
-bool is_Pushed(long &previousTime, const long &timeInterval, const uint8_t &COLOUR_FLAG) {
+bool is_Pushed(long &previousTime, const long &timeInterval, volatile uint8_t &COLOUR_FLAG) {
   if (millis() - previousTime > timeInterval)
   {
     // Update previousTime
