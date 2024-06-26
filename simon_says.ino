@@ -18,11 +18,12 @@ long drawInterval = 200; // in milliseconds
 long previousDraw = 0;
 
 // Debouncing and PB Controls
-long debounce_timeInterval = debounce_Time; //200
 long debounce_previousTime = 0;
 volatile uint8_t FLAGS = 0x00; // 4-bit variable [0000_0000]. Used to keep track which button is pressed.
 volatile long PB1PressTime = 0;
 volatile long PB2PressTime = doublePress_Threshold + 1; // So it doesn't detect simutaneous button pressing at the begining of boot
+bool PB1Pressed = false;
+bool PB2Pressed = false;
 
 
 // Game Variables
@@ -140,21 +141,13 @@ int draw(struct pt* ptDraw) {
 
 // LEFT
 void IRAM_ATTR LEFT_ISR() {
-  if (is_Pushed(debounce_previousTime, debounce_timeInterval, FLAGS) == false) {
-    FLAGS |= 0x01; // Set G flag B0
-    Serial.println("LEFT ISR");
-  }
-
+  PB1Pressed = true;
   PB1PressTime = millis();
 }
 
 // RIGHT
 void IRAM_ATTR RIGHT_ISR() {
-  if (is_Pushed(debounce_previousTime, debounce_timeInterval, FLAGS) == false) {
-    FLAGS |= 0x02; // Set Y flag B3
-    Serial.println("RIGHT ISR");
-  }
-
+  PB2Pressed = true;
   PB2PressTime = millis();
 }
 
@@ -207,10 +200,26 @@ void loop() {
     Serial.println("DIFF STATE!");
   }
 
-  // Check if the two buttons were pressed within a certain interval of each other
-  if(abs(PB1PressTime - PB2PressTime) < doublePress_Threshold) {
-    Serial.println("SIMU PB!");
-    FLAGS = 0x04;
+  // Debounce
+  if (millis() - debounce_previousTime > debounce_Time) {
+    debounce_previousTime = millis();
+
+    // Checks for button presses: Simultaneous or Single
+    if(abs(PB1PressTime - PB2PressTime) < doublePress_Threshold) { // Check if the two buttons were pressed within a certain interval of each other
+      FLAGS = 0x04;
+      Serial.println("SIMU PB!");
+    }
+    else if (PB1Pressed == true) { // Check if PB1 is pressed, if not, check if PB2 is pressed (individual press)
+      FLAGS = 0x01;
+      Serial.println("PB1!");
+    }
+    else if (PB2Pressed == true) {
+      FLAGS = 0x02;
+      Serial.println("PB2!");
+    }
+
+    PB1Pressed = false;
+    PB2Pressed = false;
 
     // Reset time to prevent continuous execution
     PB1PressTime = 0;
@@ -231,6 +240,7 @@ void loop() {
       watch();
   }
 
+  resetPB();
 }
 
 
@@ -241,24 +251,21 @@ void menu() {
     if (FLAGS == 0x02) { difficulty++;}  
     // LEFT
     else if (FLAGS == 0x01) { difficulty--; }
-    else if (FLAGS == 0x04) { confirmation = 1; } // If player hit any other button
+    else if (FLAGS == 0x04) { confirmation = 1; Serial.println("confirmed = 1"); } // If player hit any other button
 
     // Min and Max Control
     if (difficulty <= minDifficulty) {difficulty = minDifficulty; }
     else if (difficulty >= maxDifficulty) {difficulty = maxDifficulty; }
   }
   else if (confirmation == 1) {
-    if (FLAGS != 0x04) { confirmation = 0; }
+    if (FLAGS == 0x01 || FLAGS == 0x02) { confirmation = 0; Serial.println("confirmed = 0");}
     else if (FLAGS == 0x04) {gameState = State::START; } // If player hit any other button
     
   }
-
-  resetPB();
 }
 
 // Initializes and Resets all game elements
 void start() {
-  resetPB();
   generatePattern();
 }
 
@@ -300,5 +307,5 @@ void generatePattern()
 }
 
 void resetPB() { // Resets All PB Flags
-  FLAGS = 0x00; // Reset Pressed Buttons
+  FLAGS = 0x00; // Reset all FLAGS
 }
