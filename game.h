@@ -8,9 +8,9 @@
 #define game
 
 // Time
-#define watch_Time 1500
+#define watch_Time 100
 #define debounce_Time 200
-#define doublePress_Threshold 200
+#define doublePress_Threshold 100 // should always be below debounce time
 
 // Game Logic
 #define num_Patterns 5

@@ -1,29 +1,7 @@
 #include <Arduino.h>
 #include "resources.h"
 
-// tests to see if a pb has already been pushed (ISR dupe flag prevention)
-bool is_Pushed(long &previousTime, const long &timeInterval, volatile uint8_t &COLOUR_FLAG) {
-  if (millis() - previousTime > timeInterval)
-  {
-    // Update previousTime
-    previousTime = millis();
-
-    if (COLOUR_FLAG != 0x00)
-    {
-      //Serial.println("A PB IS ALREADY PRESSED!");
-      return true;
-    }
-    else
-    {
-      //Serial.println("PB PRESSED!");
-      return false;
-    }
-  }
-
-  return true; // True as in, not ready to accept inputs.
-}
-
-bool time_delay(long& previousTime, long timeInterval) {
+bool time_delay(long& previousTime, const long& timeInterval) {
   if (millis() - previousTime > timeInterval) {
     previousTime = millis();
     return true;
@@ -32,3 +10,20 @@ bool time_delay(long& previousTime, long timeInterval) {
     return false;
   }
 }
+
+void LEDOFF() {
+
+  // Turn all lights OFF
+  digitalWrite(D6, LOW);
+  digitalWrite(D7, LOW);
+}
+
+// bin is FLAGS
+void lights(const uint8_t& bin) {
+
+  LEDOFF();
+  if (bin & 0x01) { digitalWrite(D6, HIGH); } // Left LED
+  if (bin & 0x02) { digitalWrite(D7, HIGH); } // Right LED
+  if (bin & 0x04) { digitalWrite(D6, HIGH); digitalWrite(D7, HIGH); } // Both LEDs are ON
+}
+

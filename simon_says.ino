@@ -6,7 +6,7 @@
 
 // For an easier way of changing button pins
 #define PB1 D3 // Left
-#define PB2 D4 // Right
+#define PB2 D5 // Right
 
 // Blinking LED
 int ledState = LOW;
@@ -30,6 +30,8 @@ bool PB2Pressed = false;
 int confirmation = 0;
 int gameState = State::MENU; // Statemachine
 int difficulty = 5;
+int lightCounter = 0; // Keeps track of which light to display in watch mode and the level that the player is on
+int maxLightCounter = 1; // The level that the player or watch must reach to proceed onto the next stage
 
 uint8_t* dynamicPatterns = nullptr; // declare a soon-to-be dynamic pointer
 
@@ -51,7 +53,6 @@ int blinking_LED(struct pt* ptBlink) {
 
     PT_END(ptBlink);
 }
-
 
 // GPT-1 General Purpose Timer 1 (for draw)
 long GPT1Interval = 1000;
@@ -120,7 +121,19 @@ int draw(struct pt* ptDraw) {
             break;
 
           case REPEAT:
+            GPT1Interval = 500;
+            if (millis() - previousGPT1 > GPT1Interval) {
+              previousGPT1 = millis();
 
+              if (GPC_1 == 0) {
+                show_repeat(0);
+                GPC_1 = 1;
+              }
+              else if (GPC_1 == 1) {
+                show_repeat(1);
+                GPC_1 = 0;
+              }
+            }
             break;
 
           case GAMEOVER:
@@ -158,11 +171,8 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(PB1, INPUT_PULLUP); // PB, Left
   pinMode(PB2, INPUT_PULLUP); // PB, Right
-
-
-  
-
-
+  pinMode(D6, OUTPUT); // LED, Left
+  pinMode(D7, OUTPUT); // LED, Right
 
   Serial.begin(115200); // Set the baud rate to 9600 (you may have a different value)
   randomSeed(analogRead(0)); // Init random seed
@@ -196,13 +206,15 @@ void loop() {
     previousGameState = gameState;
     GPC_1 = 0;
     GPC_2 = 0;
-    GPT1Interval = 1000;
+    GPT1Interval = 1000;// defualt 1s
+
+    //previousGPT1 = millis();
+    previousGPT2 = millis();
     Serial.println("DIFF STATE!");
   }
 
   // Debounce
-  if (millis() - debounce_previousTime > debounce_Time) {
-    debounce_previousTime = millis();
+  if (time_delay(debounce_previousTime, debounce_Time)) {
 
     // Checks for button presses: Simultaneous or Single
     if(abs(PB1PressTime - PB2PressTime) < doublePress_Threshold) { // Check if the two buttons were pressed within a certain interval of each other
@@ -233,11 +245,25 @@ void loop() {
       break;
 
     case START:
-      if (GPC_2 == 0) { start(); GPC_2 = 1; }
+      if (GPC_2 == 0) { start(); GPC_2 = 1; } // Execute once
       break;
 
     case WATCHING:
+      if (GPC_2 == 0) { // Execute once and delay LED showcase by 2 second
+        if (time_delay(previousGPT2, 2000)) {
+          GPC_2 = 1; 
+        }
+        else { 
+          break; 
+        }
+      }
       watch();
+      break;
+
+    case REPEAT:
+      repeat();
+      break;
+
   }
 
   resetPB();
@@ -271,14 +297,35 @@ void start() {
 
 void watch() {
   GPT2Interval = 1000; // change this to a function that speeds up per light later in dev
+  long previousLightOff = previousGPT2 - 300;
+  maxLightCounter = difficulty;
 
-  if (time_delay(previousGPT2, GPT2Interval)) { // Every so seconds, begin a cycle of showing the LED order
+  if (time_delay(previousLightOff, GPT2Interval)) { LEDOFF(); } // 300ms before next lightCounter, turn off all lights
+
+  if (time_delay(previousGPT2, GPT2Interval)) { // For every interval, begin a cycle of showing the LED order
     previousGPT2 = millis();
 
+    if (lightCounter < maxLightCounter) { // If its still counting up execute this
+      lights(dynamicPatterns[lightCounter]);
+      lightCounter++;
+      Serial.println("Showing Next Light");
+    }
 
+    if (lightCounter == maxLightCounter) { // Reached end of WATCHING
+      gameState = State::REPEAT;
+
+      // Reset Values
+      lightCounter = 0;
+      maxLightCounter = 1;
+      Serial.println("End of Watch");
+    }
 
 
   }
+}
+
+void repeat() {
+
 }
 
 void generatePattern()
@@ -290,16 +337,14 @@ void generatePattern()
 
   for (int i = 0; i < difficulty - 1; i++)
   {
-    switch (random(0, 4))
+    switch (random(0, 3))
     {
-      case 0: // GREEN
-        dynamicPatterns[i] |= 0x1; Serial.print("G, "); break;
-      case 1: // RED
+      case 0: // LEFT
+        dynamicPatterns[i] |= 0x1; Serial.print("L, "); break;
+      case 1: // RIGHT
         dynamicPatterns[i] |= 0x2; Serial.print("R, "); break;
-      case 2: // BLUE
-        dynamicPatterns[i] |= 0x4; Serial.print("B, "); break;
-      case 3: // YELLOW
-        dynamicPatterns[i] |= 0x8; Serial.print("Y, "); break;
+      case 2: // CENTER
+        dynamicPatterns[i] |= 0x4; Serial.print("C, "); break;
     }
 
     Serial.println(dynamicPatterns[i]);

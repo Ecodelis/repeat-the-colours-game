@@ -104,6 +104,21 @@ void show_watch(int screen) {
   display.display();
 }
 
+void show_repeat(int screen) {
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+
+  int y = 32;
+  int Ytriangle = y - 7;
+  int Ytriangle_up = y - 12;
+
+
+  if (screen == 0) { drawCentreString("REPEAT", 64, y, 2); }
+  if (screen == 1) { drawCentreString("PATTERN", 64, y, 2); }
+
+  display.display();
+}
+
 void drawCentreString(const char *buf, int x, int y, float size) {
     int16_t x1, y1;
     uint16_t w, h;
